@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase'
+import { createServerClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import ReminderList from '@/components/ReminderList'

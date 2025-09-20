@@ -1,6 +1,6 @@
 'use client'
 
-import { createClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
