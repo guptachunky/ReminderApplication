@@ -1,0 +1,10 @@
+{
+  "/_not-found": "app/_not-found.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/auth/register/page": "app/auth/register/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/api/mark-paid/route": "app/api/mark-paid/route.js",
+  "/page": "app/page.js",
+  "/settings/page": "app/settings/page.js",
+  "/payment-confirm/page": "app/payment-confirm/page.js"
+}
