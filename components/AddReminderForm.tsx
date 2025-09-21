@@ -24,7 +24,10 @@ export default function AddReminderForm({ userId }: AddReminderFormProps) {
     category: 'other',
     due_date: '',
     amount: '',
-    recurring_interval: '',
+    is_recurring: false,
+    recurrence_pattern: 'monthly',
+    recurrence_interval: 1,
+    recurrence_end_date: '',
     remind_10_days: true,
     remind_5_days: true,
     remind_weekend: true,
@@ -40,21 +43,39 @@ export default function AddReminderForm({ userId }: AddReminderFormProps) {
     setLoading(true)
 
     try {
-      const { error } = await supabase.from('reminders').insert([
-        {
-          user_id: userId,
-          title: formData.title,
-          category: formData.category,
-          due_date: formData.due_date,
-          amount: formData.amount ? parseFloat(formData.amount) : null,
-          recurring_interval: formData.recurring_interval || null,
-          remind_10_days: formData.remind_10_days,
-          remind_5_days: formData.remind_5_days,
-          remind_weekend: formData.remind_weekend,
-          remind_1_day: formData.remind_1_day,
-          remind_due_day: formData.remind_due_day,
-        },
-      ])
+      const reminderData = {
+        user_id: userId,
+        title: formData.title,
+        category: formData.category,
+        due_date: formData.due_date,
+        amount: formData.amount ? parseFloat(formData.amount) : null,
+        is_recurring: formData.is_recurring,
+        recurrence_pattern: formData.is_recurring ? formData.recurrence_pattern : null,
+        recurrence_interval: formData.is_recurring ? formData.recurrence_interval : null,
+        recurrence_end_date: formData.is_recurring && formData.recurrence_end_date ? formData.recurrence_end_date : null,
+        remind_10_days: formData.remind_10_days,
+        remind_5_days: formData.remind_5_days,
+        remind_weekend: formData.remind_weekend,
+        remind_1_day: formData.remind_1_day,
+        remind_due_day: formData.remind_due_day,
+        reminder_status: 'active',
+        is_template: formData.is_recurring
+      }
+
+      // If recurring, calculate next occurrence date
+      if (formData.is_recurring) {
+        const { data: nextDate, error: calcError } = await supabase.rpc('calculate_next_occurrence', {
+          current_date: formData.due_date,
+          pattern: formData.recurrence_pattern,
+          interval_val: formData.recurrence_interval
+        })
+        
+        if (!calcError && nextDate) {
+          reminderData.next_occurrence_date = nextDate
+        }
+      }
+
+      const { error } = await supabase.from('reminders').insert([reminderData])
 
       if (error) {
         toast.error('Error creating reminder')
@@ -66,7 +87,10 @@ export default function AddReminderForm({ userId }: AddReminderFormProps) {
           category: 'other',
           due_date: '',
           amount: '',
-          recurring_interval: '',
+          is_recurring: false,
+          recurrence_pattern: 'monthly',
+          recurrence_interval: 1,
+          recurrence_end_date: '',
           remind_10_days: true,
           remind_5_days: true,
           remind_weekend: true,
@@ -161,22 +185,75 @@ export default function AddReminderForm({ userId }: AddReminderFormProps) {
         />
       </div>
 
-      <div>
-        <label htmlFor="recurring_interval" className="block text-sm font-medium text-gray-700">
-          Recurring (Optional)
+      <div className="space-y-3">
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            name="is_recurring"
+            checked={formData.is_recurring}
+            onChange={handleInputChange}
+            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <span className="ml-2 text-sm font-medium text-gray-700">Make this a recurring reminder</span>
         </label>
-        <select
-          id="recurring_interval"
-          name="recurring_interval"
-          className="input-field mt-1"
-          value={formData.recurring_interval}
-          onChange={handleInputChange}
-        >
-          <option value="">One-time</option>
-          <option value="monthly">Monthly</option>
-          <option value="quarterly">Quarterly</option>
-          <option value="yearly">Yearly</option>
-        </select>
+
+        {formData.is_recurring && (
+          <div className="space-y-3 pl-6 border-l-2 border-gray-200">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="recurrence_pattern" className="block text-sm font-medium text-gray-700">
+                  Repeat Every
+                </label>
+                <select
+                  id="recurrence_pattern"
+                  name="recurrence_pattern"
+                  className="input-field mt-1"
+                  value={formData.recurrence_pattern}
+                  onChange={handleInputChange}
+                >
+                  <option value="daily">Day(s)</option>
+                  <option value="weekly">Week(s)</option>
+                  <option value="monthly">Month(s)</option>
+                  <option value="yearly">Year(s)</option>
+                </select>
+              </div>
+              
+              <div>
+                <label htmlFor="recurrence_interval" className="block text-sm font-medium text-gray-700">
+                  Interval
+                </label>
+                <input
+                  type="number"
+                  id="recurrence_interval"
+                  name="recurrence_interval"
+                  min="1"
+                  max="365"
+                  className="input-field mt-1"
+                  value={formData.recurrence_interval}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label htmlFor="recurrence_end_date" className="block text-sm font-medium text-gray-700">
+                End Date (Optional)
+              </label>
+              <input
+                type="date"
+                id="recurrence_end_date"
+                name="recurrence_end_date"
+                className="input-field mt-1"
+                value={formData.recurrence_end_date}
+                onChange={handleInputChange}
+                min={formData.due_date || new Date().toISOString().split('T')[0]}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave empty for indefinite recurrence
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">
