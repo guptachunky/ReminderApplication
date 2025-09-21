@@ -20,7 +20,7 @@ CREATE INDEX IF NOT EXISTS idx_reminders_upcoming ON reminders(due_date) WHERE r
 
 -- Function to calculate next occurrence date
 CREATE OR REPLACE FUNCTION calculate_next_occurrence(
-  current_date DATE,
+  p_current_date DATE,
   pattern VARCHAR(20),
   interval_val INTEGER DEFAULT 1
 )
@@ -28,15 +28,15 @@ RETURNS DATE AS $$
 BEGIN
   CASE pattern
     WHEN 'yearly' THEN
-      RETURN current_date + (interval_val || ' years')::INTERVAL;
+      RETURN (p_current_date + (interval_val || ' years')::INTERVAL)::DATE;
     WHEN 'monthly' THEN
-      RETURN current_date + (interval_val || ' months')::INTERVAL;
+      RETURN (p_current_date + (interval_val || ' months')::INTERVAL)::DATE;
     WHEN 'weekly' THEN
-      RETURN current_date + (interval_val || ' weeks')::INTERVAL;
+      RETURN (p_current_date + (interval_val || ' weeks')::INTERVAL)::DATE;
     WHEN 'daily' THEN
-      RETURN current_date + (interval_val || ' days')::INTERVAL;
+      RETURN (p_current_date + (interval_val || ' days')::INTERVAL)::DATE;
     ELSE
-      RETURN current_date + (interval_val || ' years')::INTERVAL; -- Default to yearly
+      RETURN (p_current_date + (interval_val || ' years')::INTERVAL)::DATE; -- Default to yearly
   END CASE;
 END;
 $$ LANGUAGE plpgsql;

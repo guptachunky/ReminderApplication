@@ -127,8 +127,15 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Drop existing cron job if it exists
-SELECT cron.unschedule('daily-reminder-notifications');
+-- Drop existing cron job if it exists (avoid error if missing)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM cron.job WHERE jobname = 'daily-reminder-notifications'
+  ) THEN
+    PERFORM cron.unschedule('daily-reminder-notifications');
+  END IF;
+END $$;
 
 -- Create configurable cron job
 -- This will run at the time specified in scheduler_config
@@ -161,8 +168,12 @@ DECLARE
 BEGIN
   -- Only update if the daily_run_time config changed
   IF NEW.config_name = 'daily_run_time' THEN
-    -- Unschedule existing job
-    PERFORM cron.unschedule('daily-reminder-notifications');
+    -- Unschedule existing job (only if it exists)
+    IF EXISTS (
+      SELECT 1 FROM cron.job WHERE jobname = 'daily-reminder-notifications'
+    ) THEN
+      PERFORM cron.unschedule('daily-reminder-notifications');
+    END IF;
     
     -- Create new schedule
     cron_schedule := SPLIT_PART(NEW.config_value, ':', 2) || ' ' || SPLIT_PART(NEW.config_value, ':', 1) || ' * * *';

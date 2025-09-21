@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
-import { format, differenceInDays } from 'date-fns'
+import { format, differenceInDays, isValid, parseISO } from 'date-fns'
 import toast from 'react-hot-toast'
 
 interface Reminder {
@@ -23,6 +23,7 @@ interface Reminder {
   original_reminder_id: string | null
   days_until?: number
   created_at: string
+  next_occurrence_date?: string | null
 }
 
 interface EnhancedReminderListProps {
@@ -195,10 +196,28 @@ export default function EnhancedReminderList({ userId }: EnhancedReminderListPro
     }
   }
 
-  const getDaysUntilDue = (dueDate: string) => {
-    const today = new Date()
-    const due = new Date(dueDate)
-    return differenceInDays(due, today)
+  // Safe date formatting function to handle null or invalid dates
+  const formatSafeDate = (dateString: string | null | undefined, formatStr: string = 'PPP') => {
+    if (!dateString) return 'Not set';
+    try {
+      const date = parseISO(dateString);
+      return isValid(date) ? format(date, formatStr) : 'Invalid date';
+    } catch (error) {
+      console.error('Invalid date:', dateString, error);
+      return 'Invalid date';
+    }
+  }
+
+  const getDaysUntilDue = (dueDate: string | null | undefined) => {
+    if (!dueDate) return 0;
+    try {
+      const today = new Date();
+      const date = parseISO(dueDate);
+      return isValid(date) ? differenceInDays(date, today) : 0;
+    } catch (error) {
+      console.error('Error calculating days until due:', error);
+      return 0;
+    }
   }
 
   const getUrgencyColor = (daysUntil: number, paymentStatus: string, reminderStatus: string) => {
@@ -212,10 +231,10 @@ export default function EnhancedReminderList({ userId }: EnhancedReminderListPro
 
   const getUrgencyText = (daysUntil: number, paymentStatus: string, reminderStatus: string, paidAt: string | null, completionDate: string | null) => {
     if (reminderStatus === 'completed') {
-      return `Completed ${completionDate ? format(new Date(completionDate), 'MMM d, yyyy') : ''}`
+      return `Completed ${completionDate ? formatSafeDate(completionDate, 'MMM d, yyyy') : ''}`
     }
     if (paymentStatus === 'paid') {
-      return `Paid ${paidAt ? format(new Date(paidAt), 'MMM d, yyyy') : ''}`
+      return `Paid ${paidAt ? formatSafeDate(paidAt, 'MMM d, yyyy') : ''}`
     }
     if (daysUntil < 0) return `Overdue by ${Math.abs(daysUntil)} day(s)`
     if (daysUntil === 0) return 'Due today'
@@ -245,8 +264,14 @@ export default function EnhancedReminderList({ userId }: EnhancedReminderListPro
 
   const renderReminderCard = (reminder: Reminder) => {
     const daysUntil = reminder.days_until ?? getDaysUntilDue(reminder.due_date)
-    const urgencyColor = getUrgencyColor(daysUntil, reminder.payment_status, reminder.reminder_status)
-    const urgencyText = getUrgencyText(daysUntil, reminder.payment_status, reminder.reminder_status, reminder.paid_at, reminder.completion_date)
+    const urgencyColor = getUrgencyColor(daysUntil, reminder.payment_status || 'unpaid', reminder.reminder_status || 'active')
+    const urgencyText = getUrgencyText(
+      daysUntil, 
+      reminder.payment_status || 'unpaid', 
+      reminder.reminder_status || 'active', 
+      reminder.paid_at, 
+      reminder.completion_date
+    )
 
     return (
       <div
@@ -275,7 +300,7 @@ export default function EnhancedReminderList({ userId }: EnhancedReminderListPro
             <div className="space-y-1 text-sm text-gray-600">
               <p>
                 <span className="font-medium">Due:</span>{' '}
-                {format(new Date(reminder.due_date), 'PPP')}
+                {formatSafeDate(reminder.due_date)}
               </p>
               {reminder.amount && (
                 <p>
@@ -292,6 +317,13 @@ export default function EnhancedReminderList({ userId }: EnhancedReminderListPro
               }`}>
                 {urgencyText}
               </p>
+              
+              {activeTab === 'recurring' && reminder.next_occurrence_date && (
+                <p>
+                  <span className="font-medium">Next occurrence:</span>{' '}
+                  {formatSafeDate(reminder.next_occurrence_date)}
+                </p>
+              )}
             </div>
 
             <div className="mt-2 flex flex-wrap gap-1">
