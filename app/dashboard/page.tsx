@@ -1,7 +1,7 @@
 import { createServerClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import Navbar from '@/components/Navbar'
-import ReminderList from '@/components/ReminderList'
+import EnhancedReminderList from '@/components/EnhancedReminderList'
 import AddReminderForm from '@/components/AddReminderForm'
 
 export default async function Dashboard() {
@@ -15,17 +15,8 @@ export default async function Dashboard() {
     redirect('/auth/login')
   }
 
-  // Fetch user's reminders
-  const { data: reminders, error } = await supabase
-    .from('reminders')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .order('due_date', { ascending: true })
-
-  if (error) {
-    console.error('Error fetching reminders:', error)
-  }
+  // Note: EnhancedReminderList will fetch its own data based on tabs
+  // No need to pre-fetch reminders here
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -51,13 +42,10 @@ export default async function Dashboard() {
               </div>
             </div>
 
-            {/* Reminders List */}
+            {/* Enhanced Reminders List */}
             <div className="lg:col-span-2">
               <div className="card">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Your Reminders ({reminders?.length || 0})
-                </h2>
-                <ReminderList reminders={reminders || []} />
+                <EnhancedReminderList userId={user.id} />
               </div>
             </div>
           </div>
